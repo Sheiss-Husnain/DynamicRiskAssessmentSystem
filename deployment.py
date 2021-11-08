@@ -1,0 +1,58 @@
+from flask import Flask, session, jsonify, request
+import pandas as pd
+import numpy as np
+import pickle
+import os
+from sklearn import metrics
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+import json
+
+
+
+##################Load config.json and correct path variable
+with open('config.json','r') as f:
+    config = json.load(f) 
+
+dataset_csv_path = os.path.join(config['output_folder_path']) 
+prod_deployment_path = os.path.join(config['prod_deployment_path']) 
+
+model_path = os.path.join(config['output_model_path'])
+# print(os.path.join(os.getcwd(), model_path, "trainedmodel.pkl"))
+model = pickle.load(open(os.path.join(os.getcwd(), model_path, "trainedmodel.pkl"),"rb"))
+
+
+if not os.path.exists(os.path.join(os.getcwd(),prod_deployment_path)):
+    os.umask(0)
+    os.makedirs(os.path.join(os.getcwd(),prod_deployment_path), mode=0o777)
+
+####################function for deployment
+def store_model_into_pickle(prod_deployment_path, model, dataset_csv_path):       
+#     if not os.path.exists(os.path.join(os.getcwd(),prod_deployment_path)):
+  #       os.makedirs(os.path.join(os.getcwd(),prod_deployment_path))
+    prod_path = os.path.join(os.getcwd(), prod_deployment_path)
+    if not os.path.exists(prod_path):
+        os.makedirs(prod_path)
+    
+#     model_path = os.path.join(config['output_model_path'])
+#     model = pickled.load(open(os.path.join(os.getcwd(),model_path,'trainedmodel.pkl'),'rb'))
+    
+    pickle.dump(model, open(os.path.join(os.getcwd(),prod_deployment_path,'trainedmodel.pkl'),'wb'))
+        
+    scores_file = os.path.join(os.getcwd(),model_path,'latestscore.txt')
+    with open(scores_file,'r') as file:
+        scores = file.read()
+
+    with open(os.path.join(os.getcwd(),prod_deployment_path,'latestscore.txt'),'w') as file:
+        file.write(scores)
+        
+#     ingested_file = os.path.join(os.getcwd(),dataset_csv_path,'ingestedfiles.txt')
+    output_ingestdata = os.path.join(os.getcwd(), dataset_csv_path, "ingestedfiles.txt")
+    with open(output_ingestdata, "r") as f:
+        ingesteddata = f.read()
+    
+    with open(os.path.join(prod_path, "ingestedfiles.txt"), "w") as f:
+        f.write(ingesteddata)
+              
+if __name__ == '__main__':
+    store_model_into_pickle(prod_deployment_path, model, dataset_csv_path)
